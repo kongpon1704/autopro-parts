@@ -9,6 +9,16 @@
   }
   html { scroll-behavior: smooth; }
   body { font-family: 'Inter', 'Noto Sans Thai', system-ui, sans-serif; }
+
+  /* Material Symbols default sizing (override per-icon with text-[Npx]) */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  .material-symbols-outlined.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
 }
 
 @layer components {
@@ -41,6 +51,17 @@
   .badge-gold    { @apply badge bg-gold-light text-gold; }
   .section-title { @apply text-sm font-semibold text-primary; }
   .stat-card     { @apply card p-4; }
+
+  /* ── Stitch-style components ────────────────────────────── */
+  .product-card {
+    @apply bg-white rounded-xl shadow-product hover:shadow-product-hover transition-all overflow-hidden flex flex-col;
+  }
+  .fit-chip {
+    @apply inline-flex items-center gap-1.5 bg-fit-confirmed-bg text-fit-confirmed px-2 py-1 rounded text-label-sm w-fit;
+  }
+  .stitch-input {
+    @apply pl-10 pr-4 py-2 bg-surface-low border-none rounded-lg w-full focus:ring-2 focus:ring-secondary outline-none transition-all;
+  }
 }
 
 /* Scrollbar */

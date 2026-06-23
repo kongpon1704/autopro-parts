@@ -2,7 +2,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import ProductCard from '@/components/shop/ProductCard'
-import { Button, Spinner, EmptyState } from '@/components/ui'
 import type { Product, Category } from '@/types'
 
 function CatalogContent() {
@@ -19,9 +18,11 @@ function CatalogContent() {
   const sort = searchParams.get('sort') || 'created_at'
   const [localSearch, setLocalSearch] = useState(search)
 
+  const PER_PAGE = 12
+
   const fetchProducts = async (p = 1) => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(p), per_page: '12' })
+    const params = new URLSearchParams({ page: String(p), per_page: String(PER_PAGE) })
     if (search) params.set('search', search)
     if (category) params.set('category', category)
     // Map UI sort values to API's sort+order params
@@ -61,17 +62,40 @@ function CatalogContent() {
     updateParam('search', localSearch)
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages) return
+    setPage(p)
+    fetchProducts(p)
+  }
+
+  // Build a compact page-number list: 1 2 3 ... totalPages
+  const pageNumbers = (() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    if (page <= 3) return [1, 2, 3, '...', totalPages]
+    if (page >= totalPages - 2) return [1, '...', totalPages - 2, totalPages - 1, totalPages]
+    return [1, '...', page, '...', totalPages]
+  })()
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="flex flex-col md:flex-row gap-6">
+    <div className="max-w-container-max mx-auto px-gutter py-stack-lg">
+      <div className="flex flex-col md:flex-row gap-gutter">
         {/* Sidebar filters */}
-        <aside className="w-full md:w-56 flex-shrink-0">
-          <div className="card p-4 sticky top-20">
-            <h2 className="section-title mb-3">หมวดหมู่</h2>
-            <div className="space-y-1">
+        <aside className="w-full md:w-60 flex-shrink-0">
+          <div className="bg-white rounded-xl shadow-product p-5 sticky top-24">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-outlined text-on-surface-variant">tune</span>
+              <h2 className="text-headline-sm text-primary">ตัวกรองสินค้า</h2>
+            </div>
+
+            <h3 className="text-label-md text-on-surface-variant mb-2">หมวดหมู่</h3>
+            <div className="space-y-1 mb-5">
               <button
                 onClick={() => updateParam('category', '')}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!category ? 'bg-primary text-white' : 'hover:bg-surface text-gray-700'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                  !category ? 'bg-primary text-on-primary' : 'hover:bg-surface-low text-on-surface-variant'
+                }`}
               >
                 ทั้งหมด ({total})
               </button>
@@ -79,19 +103,22 @@ function CatalogContent() {
                 <button
                   key={cat.id}
                   onClick={() => updateParam('category', cat.slug)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${category === cat.slug ? 'bg-primary text-white' : 'hover:bg-surface text-gray-700'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                    category === cat.slug ? 'bg-primary text-on-primary' : 'hover:bg-surface-low text-on-surface-variant'
+                  }`}
                 >
                   <span>{cat.icon}</span> {cat.name}
                 </button>
               ))}
             </div>
 
-            <hr className="my-4 border-gray-100" />
-            <h2 className="section-title mb-3">เรียงตาม</h2>
+            <hr className="my-4 border-outline-variant/30" />
+
+            <h3 className="text-label-md text-on-surface-variant mb-2">เรียงตาม</h3>
             <select
               value={sort}
               onChange={e => updateParam('sort', e.target.value)}
-              className="input text-sm"
+              className="w-full bg-surface-low border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-secondary outline-none transition-all"
             >
               <option value="created_at">ใหม่ล่าสุด</option>
               <option value="sold">ขายดีที่สุด</option>
@@ -103,59 +130,108 @@ function CatalogContent() {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {/* Search bar */}
-          <form onSubmit={handleSearch} className="flex gap-2 mb-5">
+          <form onSubmit={handleSearch} className="relative mb-5">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+              search
+            </span>
             <input
               value={localSearch}
               onChange={e => setLocalSearch(e.target.value)}
               placeholder="ค้นหาชื่อสินค้า แบรนด์ หรือ SKU..."
-              className="input flex-1"
+              className="w-full pl-10 pr-24 py-3 bg-white rounded-lg shadow-product border-none focus:ring-2 focus:ring-secondary outline-none transition-all"
             />
-            <Button type="submit" size="md">ค้นหา</Button>
+            <button
+              type="submit"
+              className="absolute right-1.5 top-1.5 px-4 py-1.5 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90 transition-all active:scale-95"
+            >
+              ค้นหา
+            </button>
           </form>
 
           {/* Results info */}
-          {!loading && (
-            <div className="text-sm text-gray-500 mb-4">
-              {search && <span>ผลการค้นหา "<strong className="text-gray-800">{search}</strong>" — </span>}
-              พบ <strong>{total.toLocaleString()}</strong> รายการ
-            </div>
-          )}
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-headline-sm text-primary">
+              {category
+                ? categories.find(c => c.slug === category)?.name || 'รายการสินค้า'
+                : 'รายการสินค้าทั้งหมด'}
+            </h1>
+            {!loading && (
+              <span className="text-on-surface-variant text-sm">
+                {search && <>ผลการค้นหา "<strong className="text-on-surface">{search}</strong>" — </>}
+                พบ <strong>{total.toLocaleString()}</strong> รายการ
+              </span>
+            )}
+          </div>
 
           {/* Products grid */}
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="card overflow-hidden">
-                  <div className="skeleton h-40 w-full" />
-                  <div className="p-3 space-y-2">
-                    <div className="skeleton h-3 w-2/3" />
-                    <div className="skeleton h-4 w-full" />
-                    <div className="skeleton h-3 w-1/3" />
-                    <div className="skeleton h-8 w-full mt-2" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-gutter">
+              {[...Array(9)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-product overflow-hidden">
+                  <div className="skeleton aspect-square w-full" />
+                  <div className="p-5 space-y-2">
+                    <div className="skeleton h-5 w-2/3 rounded" />
+                    <div className="skeleton h-4 w-full rounded" />
+                    <div className="skeleton h-4 w-1/3 rounded" />
+                    <div className="skeleton h-10 w-full rounded-lg mt-2" />
                   </div>
                 </div>
               ))}
             </div>
           ) : products.length === 0 ? (
-            <EmptyState
-              icon="🔍"
-              title="ไม่พบสินค้า"
-              description="ลองเปลี่ยนคำค้นหาหรือหมวดหมู่"
-              action={<Button variant="secondary" onClick={() => router.push('/catalog')}>ดูสินค้าทั้งหมด</Button>}
-            />
+            <div className="bg-white rounded-xl shadow-product flex flex-col items-center justify-center py-16 text-center">
+              <span className="material-symbols-outlined text-5xl text-on-surface-variant mb-4">search_off</span>
+              <h3 className="text-headline-sm text-primary mb-1">ไม่พบสินค้า</h3>
+              <p className="text-on-surface-variant text-sm mb-4">ลองเปลี่ยนคำค้นหาหรือหมวดหมู่</p>
+              <button
+                onClick={() => router.push('/catalog')}
+                className="px-4 py-2 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-surface-low transition-all"
+              >
+                ดูสินค้าทั้งหมด
+              </button>
+            </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-gutter">
                 {products.map(p => <ProductCard key={p.id} product={p} />)}
               </div>
+
               {/* Pagination */}
-              {total > 12 && (
-                <div className="flex justify-center gap-2 mt-8">
-                  <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => { setPage(p => p - 1); fetchProducts(page - 1) }}>← ก่อนหน้า</Button>
-                  <span className="px-4 py-1.5 text-sm text-gray-600 self-center">หน้า {page} / {Math.ceil(total / 12)}</span>
-                  <Button variant="secondary" size="sm" disabled={page >= Math.ceil(total / 12)} onClick={() => { setPage(p => p + 1); fetchProducts(page + 1) }}>ถัดไป →</Button>
+              {totalPages > 1 && (
+                <div className="mt-stack-lg flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page === 1}
+                    className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-low transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+
+                  {pageNumbers.map((n, i) =>
+                    n === '...' ? (
+                      <span key={`ellipsis-${i}`} className="px-2 text-on-surface-variant">...</span>
+                    ) : (
+                      <button
+                        key={n}
+                        onClick={() => goToPage(n as number)}
+                        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
+                          page === n ? 'bg-primary text-on-primary font-bold' : 'hover:bg-surface-low text-on-surface-variant'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page >= totalPages}
+                    className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-low transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
                 </div>
               )}
             </>
@@ -169,16 +245,16 @@ function CatalogContent() {
 export default function CatalogPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="card overflow-hidden">
-              <div className="skeleton h-40 w-full" />
-              <div className="p-3 space-y-2">
-                <div className="skeleton h-3 w-2/3" />
-                <div className="skeleton h-4 w-full" />
-                <div className="skeleton h-3 w-1/3" />
-                <div className="skeleton h-8 w-full mt-2" />
+      <div className="max-w-container-max mx-auto px-gutter py-stack-lg">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-gutter">
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-product overflow-hidden">
+              <div className="skeleton aspect-square w-full" />
+              <div className="p-5 space-y-2">
+                <div className="skeleton h-5 w-2/3 rounded" />
+                <div className="skeleton h-4 w-full rounded" />
+                <div className="skeleton h-4 w-1/3 rounded" />
+                <div className="skeleton h-10 w-full rounded-lg mt-2" />
               </div>
             </div>
           ))}
